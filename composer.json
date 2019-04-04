@@ -1,0 +1,8 @@
+{
+    "name": "dibs/magento1_dibseasy",
+    "type": "magento-module",
+    "require": {},
+    "suggest": {
+        "magento-hackathon/magento-composer-installer": "Copies module files from vendor"
+    }
+}
