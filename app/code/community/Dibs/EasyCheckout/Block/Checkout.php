@@ -63,17 +63,28 @@ class Dibs_EasyCheckout_Block_Checkout extends Mage_Core_Block_Template
         $quote = Mage::helper('checkout/cart')->getCart()->getQuote();
         $value = [];
         foreach ($quote->getAllItems() as $item) {
-            $price = $item->getParentItemId()?  $item->getParentItem()->getPrice(): $item->getPrice();
-            $formattedPrice = str_replace('.', ',', Mage::getModel('directory/currency')->formatTxt($price, array('display' => Zend_Currency::NO_SYMBOL)));
-            $subtotal = str_replace('.', ',', Mage::getModel('directory/currency')->formatTxt($price, array('display' => Zend_Currency::NO_SYMBOL)));
-            $value[]= array (
-            'id' => $item->getId(),
-            'product_url' => $item->getProduct()->getProductUrl(),
-            'name' => $item->getName(),
-            'quantity' => $item->getQty(),
-            'price' => $formattedPrice,
-            'subtotal' => $subtotal,
-            'thumb_url' =>  $this->getProductThumbnailUrl($item->getProduct())->__toString());
+			
+			/**
+			 * to remove duplicate products with configurable products in cart
+			 * modified by - Niteen Barde
+			 */
+			if (!$item->getParentItemId()) {
+				$price = $item->getParentItemId()?  $item->getParentItem()->getPrice(): $item->getPrice();
+				$rowTotal = $item->getRowTotal();
+				$formattedPrice = str_replace('.', ',', Mage::getModel('directory/currency')->formatTxt($price, array('display' => Zend_Currency::NO_SYMBOL)));
+				$subtotal = str_replace('.', ',', Mage::getModel('directory/currency')->formatTxt($price, array('display' => Zend_Currency::NO_SYMBOL)));
+				
+				$rowTotal = str_replace('.', ',', Mage::getModel('directory/currency')->formatTxt($rowTotal, array('display' => Zend_Currency::NO_SYMBOL)));
+				
+				$value[]= array (
+				'id' => $item->getId(),
+				'product_url' => $item->getProduct()->getProductUrl(),
+				'name' => $item->getName(),
+				'quantity' => $item->getQty(),
+				'price' => $formattedPrice,
+				'subtotal' => $rowTotal,
+				'thumb_url' =>  $this->getProductThumbnailUrl($item->getProduct())->__toString());
+			}
         }
         return (object)$value;
     }
@@ -109,4 +120,5 @@ class Dibs_EasyCheckout_Block_Checkout extends Mage_Core_Block_Template
         }
         //return Mage::getSingleton('checkout/session');
     }
+	
 }
