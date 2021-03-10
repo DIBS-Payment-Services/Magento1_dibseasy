@@ -298,13 +298,25 @@ class Dibs_EasyCheckout_Model_Checkout extends Mage_Core_Model_Abstract
             $paymentBillingAddress = $payment->getShippingAddress();
         }
         $billingAddress = $quote->getBillingAddress();
-        $billingRegionCode  = $paymentBillingAddress->getData('postalCode');
+        //$billingRegionCode  = $paymentBillingAddress->getData('postalCode');
+		$billingRegionCode  = $paymentBillingAddress['postalCode'];
+		
         $billingAddress->setFirstname($payment->getPrivatePerson()->getData('firstName'));
         $billingAddress->setLastname($payment->getPrivatePerson()->getData('lastName'));
-        $billingAddress->setStreet($paymentBillingAddress->getStreetsArray());
-        $billingAddress->setPostcode($paymentBillingAddress->getData('postalCode'));
-        $billingAddress->setCity($paymentBillingAddress->getData('city'));
-        $billingAddress->setCountryId($this->getCountryId($paymentBillingAddress->getData('country')));
+        
+		//$billingAddress->setStreet($paymentBillingAddress->getStreetsArray());
+		$addressLine1  = $paymentBillingAddress['addressLine1'];
+		$billingAddress->setStreet($addressLine1);
+		
+        //$billingAddress->setPostcode($paymentBillingAddress->getData('postalCode'));
+		$billingAddress->setPostcode($billingRegionCode);
+		
+        //$billingAddress->setCity($paymentBillingAddress->getData('city'));
+		$billingAddress->setCity($paymentBillingAddress['city']);
+		
+        //$billingAddress->setCountryId($this->getCountryId($paymentBillingAddress->getData('country')));
+		$billingAddress->setCountryId($this->getCountryId($paymentBillingAddress['country']));
+		
         $billingAddress->setEmail($payment->getPrivatePerson()->getData('email'));
         $billingAddress->setTelephone($payment->getPrivatePerson()->getTelephone());
         $billingAddress->setCompany($payment->getCompany()->getData('name'));
