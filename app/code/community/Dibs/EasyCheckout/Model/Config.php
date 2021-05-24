@@ -49,5 +49,9 @@ class Dibs_EasyCheckout_Model_Config
     const DEFAULT_CHECKOUT_LANGUAGE = 'en-GB';
 
     const DIBS_EASY_SHIPPING_METHOD = 'dibs_easy_freeshipping_dibs_easy_freeshipping';
+	
+	const XML_CONFIG_PATH_AUTO_CAPTURE = 'payment/dibs_easy_checkout/auto_capture';
+	
+	const XML_CONFIG_PATH_MERCHANT_TERMS_URL = 'payment/dibs_easy_checkout/merchant_terms_url';
     
 }

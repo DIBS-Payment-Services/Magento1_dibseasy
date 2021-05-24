@@ -193,7 +193,8 @@ class Dibs_EasyCheckout_Model_Api extends Mage_Core_Model_Abstract
       $params = [
             'order' => [
                 'items'     =>  $this->_getQuoteItems($quote),
-                'amount'    =>  $this->getDibsQuoteGrandTotal($quote),
+                //'amount'    =>  $this->getDibsQuoteGrandTotal($quote),
+                'amount'    =>  $this->getAmountAll($quote),
                 'currency'  =>  $quote->getQuoteCurrencyCode(),
                 'reference' =>  $quote->getEntityId()
             ],
@@ -217,6 +218,8 @@ class Dibs_EasyCheckout_Model_Api extends Mage_Core_Model_Abstract
       $this->setInvoiceFee($params, $quote);
       $this->setTermsAndConditionsUrl($params);
       $this->setCustomerTypes($params);
+	  $this->setAutoCapture($params);
+	  $this->setMerchantTermsUrl($params);
       return $params;
     }
 
@@ -282,6 +285,7 @@ class Dibs_EasyCheckout_Model_Api extends Mage_Core_Model_Abstract
     {
         $result = [];
         $items = $quote->getAllItems();
+		/* Item block */
         /** @var Mage_Sales_Model_Quote_Item $item */
         foreach ($items as $item) {
             if ($this->_isNotChargeable($item)) {
@@ -289,6 +293,8 @@ class Dibs_EasyCheckout_Model_Api extends Mage_Core_Model_Abstract
             }
             $result[] = $this->_getOrderLineItem($item);
         }
+		
+		/* Shipment block */
         $shippingAmount = (double)$quote->getShippingAddress()->getShippingInclTax();
         if ($shippingAmount > 0) {
             $carrierReference = $quote->getShippingAddress()->getShippingMethod();
@@ -296,9 +302,28 @@ class Dibs_EasyCheckout_Model_Api extends Mage_Core_Model_Abstract
             $shippingAddress = $quote->getShippingAddress();
             $result[] = $this->_getShippingLineItem($shippingAddress, $carrierReference, $carrierName);
         }
-
+		
+		/* Discount block */
+		$discountAmount = 0;
+		foreach ($items as $item) {
+			$discountAmount += $item->getBaseDiscountAmount();
+        }
+		if ($discountAmount > 0) {
+			$result[] = $this->_getDiscountItem($quote);
+		}
         return $result;
     }
+	
+	protected function getAmountAll(Mage_Sales_Model_Quote $quote){
+		
+		$amountArray = $this->_getQuoteItems($quote);
+		$sum = 0;
+		foreach ($amountArray as $product) {
+			$sum += $product['grossTotalAmount'];
+		}
+		$sum = round($sum,2);
+		return $sum;
+	}
 
     /**
      * @param Mage_Sales_Model_Order_Creditmemo $invoice
@@ -359,18 +384,36 @@ class Dibs_EasyCheckout_Model_Api extends Mage_Core_Model_Abstract
      * @return array
      */
     protected function _getOrderLineItem(Mage_Core_Model_Abstract $item)
-    {
+    {	
+		$quantity = (int)$item->getQty();
+		$taxFormat = '1'.str_pad(number_format((float)$item->getTaxPercent(), 2, '.', ''), 5, '0', STR_PAD_LEFT);
+		$taxRate = round($item->getTaxPercent() * 100, 2);
+		if(Mage::helper('tax')->priceIncludesTax() && Mage::helper('tax')->applyTaxAfterDiscount()) {
+			//$productPrice = round( $item->getPriceInclTax()* 100 , 2);
+			$productPrice = round($item->getPrice()* 100 , 2);
+			$netTotalAmount = round($quantity * $productPrice);
+			$grossTotalAmount = round( round($productPrice * ($taxFormat/100)) *  $quantity);
+			$taxAmount = $grossTotalAmount - $netTotalAmount;
+		}else{
+			if(!Mage::helper('tax')->priceIncludesTax()){	
+				$productPrice = round( $item->getPrice()* 100, 2);
+				$grossTotalAmount = round( ($item->getRowTotal() + $item->getTaxAmount()) * 100, 2);
+				$netTotalAmount = round($quantity * $productPrice);
+				$taxAmount = $grossTotalAmount - $netTotalAmount;
+			}
+		}
+		
         $name = preg_replace('/[^\w\d\s]*/', '', $item->getName());
         $result = [
             'reference'         =>  $item->getSku(),
             'name'              =>  $name,
-            'quantity'          =>  (int)$item->getQty(),
-            'unit'              =>  1,
-            'unitPrice'         =>  $this->_getItemNetTotalAmount($item),
-            'taxRate'           =>  $this->getDibsIntVal($item->getTaxPercent()),
-            'taxAmount'         =>  $this->_getItemTaxAmount($item),
-            'grossTotalAmount'  =>  $this->_getItemGrossTotalAmount($item),
-            'netTotalAmount'    =>  $this->_getItemNetTotalAmount($item) ,
+            'quantity'          =>  $quantity,
+            'unit'              =>  'qty',
+            'unitPrice'         =>  $productPrice,
+            'taxRate'           =>  $taxRate,
+            'taxAmount'         =>  $taxAmount,
+            'grossTotalAmount'  =>  $grossTotalAmount,
+            'netTotalAmount'    =>  $netTotalAmount
         ];
 
         return $result;
@@ -384,7 +427,7 @@ class Dibs_EasyCheckout_Model_Api extends Mage_Core_Model_Abstract
             'reference'         =>  $carrierReference,
             'name'              =>  $name,
             'quantity'          =>  1,
-            'unit'              =>  1,
+            'unit'              =>  'units',
             'unitPrice'         =>  $this->getDibsIntVal($shippingInfo->getShippingAmount()),
             'taxRate'           =>  0,
             'taxAmount'         =>  $this->getDibsIntVal($tax),
@@ -392,6 +435,37 @@ class Dibs_EasyCheckout_Model_Api extends Mage_Core_Model_Abstract
             'netTotalAmount'    =>  $this->getDibsIntVal($shippingInfo->getShippingAmount()) ,
         ];
 
+        return $result;
+    }
+	
+	protected function _getDiscountItem(Mage_Sales_Model_Quote $quote)
+    {
+		/*
+		$productPrice = round(round(($item->getBasePrice()*100) / $item->getTaxPercent(), 2) * 100);
+		$taxFormat = '1'.str_pad(number_format((float)$item->getTaxPercent(), 2, '.', ''), 5, '0', STR_PAD_LEFT);
+		$taxRate = $item->getTaxPercent() * 100;
+		$netTotalAmount = round($quantity * $productPrice);
+		$grossTotalAmount = round(($netTotalAmount * $taxFormat)/100);
+		$taxAmount = $grossTotalAmount - $netTotalAmount;
+		*/
+		
+		$items = $quote->getAllItems();
+		$totalDiscountAmount = 0;
+		foreach($items as $item){
+			$totalDiscountAmount += $item->getDiscountAmount() * 100;
+		}
+		
+		$result = [
+				'reference'         =>  'discount',
+				'name'              =>  $quote->getCouponCode(),
+				'quantity'          =>  1,
+				'unit'              =>  'units',
+				'unitPrice'         =>  -$totalDiscountAmount,
+				'taxRate'           =>  0,
+				'taxAmount'         =>  0,
+				'grossTotalAmount'  =>  -$totalDiscountAmount,
+				'netTotalAmount'    =>  -$totalDiscountAmount,
+			];
         return $result;
     }
 
@@ -629,6 +703,28 @@ class Dibs_EasyCheckout_Model_Api extends Mage_Core_Model_Abstract
     {
        return $this->getCustomer()->getDefaultShippingAddress()->validate()
               && $this->extractPhone();
+    }
+	
+	/**
+     * @param $params
+     *
+     * @return $this
+     */
+    private function setAutoCapture(&$params)
+    {
+        $params['checkout']['charge'] = $this->_getDibsCheckoutHelper()->getAutoCapture();
+        return $this;
+    }
+	
+	/**
+     * @param $params
+     *
+     * @return $this
+     */
+	private function setMerchantTermsUrl(&$params)
+    {
+        $params['checkout']['merchantTermsUrl'] = $this->_getDibsCheckoutHelper()->getMerchantTermsUrl();
+        return $this;
     }
 
 }

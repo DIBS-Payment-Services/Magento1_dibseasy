@@ -108,6 +108,28 @@ class Dibs_EasyCheckout_Helper_Data extends Mage_Core_Helper_Abstract
     {
         return Mage::getStoreConfig(Dibs_EasyCheckout_Model_Config::XML_CONFIG_PATH_CUSTOMER_TYPE);
     }
+	
+	/**
+     * @return mixed
+     */
+    public function getAutoCapture()
+    {
+        $_autoCapture = Mage::getStoreConfig(Dibs_EasyCheckout_Model_Config::XML_CONFIG_PATH_AUTO_CAPTURE);
+		if($_autoCapture){
+			return 'true';
+		}else{
+			return 'false';
+		}
+    }
+	
+	/**
+     * @return mixed
+     */
+    public function getMerchantTermsUrl()
+    {
+        $result = Mage::getStoreConfig(Dibs_EasyCheckout_Model_Config::XML_CONFIG_PATH_MERCHANT_TERMS_URL);
+        return $result;
+    }
 
     /**
      * @return mixed|string

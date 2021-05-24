@@ -64,6 +64,7 @@
     var checkout = new Dibs.Checkout(checkoutOptions);
 
     checkout.on('payment-completed', function(response) {
+		//thawCheckout();
         window.location = '<?php echo $this->getDibsCheckoutValidateUrl() ?>';
     });
 
@@ -71,6 +72,34 @@
         customerIsLoggedIn = true;
         updateView({'action':'address-changed', 'customerisloggedin':customerIsLoggedIn});
     });
+	
+	checkout.on('pay-initialized', function(response) {
+	
+		var inputs = document.getElementsByTagName("input");
+		for (var i = 0; i < inputs.length; i++) {
+			inputs[i].disabled = true;
+		}
+		
+		var buttons = document.getElementsByTagName("button");
+		for (var i = 0; i < buttons.length; i++) {
+			buttons[i].disabled = true;
+		}
+		
+		var anchors = document.getElementsByTagName("a");
+		for (var i = 0; i < anchors.length; i++) {
+			anchors[i].setAttribute("style", "pointer-events: none;");
+			anchors[i].href='javascript:void(0)';
+		}
+		
+		var shippingselector = document.getElementsByClassName("dibs-easy-shipping-selector");
+		for (var i = 0; i < shippingselector.length; i++) {
+			shippingselector[i].removeAttribute("onclick");
+		}
+		
+		checkout.send('payment-order-finalized', true);
+		//return true;
+	});
+    
     //]]>
     var $_ = jQuery;
     var previousVal = null;

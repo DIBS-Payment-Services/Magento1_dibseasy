@@ -74,7 +74,7 @@ class Dibs_EasyCheckout_CheckoutController extends Mage_Core_Controller_Front_Ac
         $paymentId = $quote->getDibsEasyPaymentId();
         if (empty($paymentId)) {
             Mage::log('No payment ID was saved on the customers quote, please make sure this column exists in the database and fully clear the cache if it does', null, 'dibseasy.log');
-            $messsage = $helper->__('There is error. Please contact store administrator for details3');
+            $messsage = $helper->__('There is error. Please contact store administrator for details');
             $helper->getCheckout()->addError($messsage);
             $this->_redirect('checkout/cart');
         }
