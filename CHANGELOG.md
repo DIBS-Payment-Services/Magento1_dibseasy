@@ -12,6 +12,9 @@
 
 ## CHANGELOG
 
+### Version 1.1.2 - Released 2021-06-23
+* Update - Updated brand name in admin configuration
+
 ### Version 1.1.1 - Released 2021-05-24
 * Fixed - Gross total amount mismatch
 * Update - Added Auto-capture & Merchant Terms Url in checkout params
