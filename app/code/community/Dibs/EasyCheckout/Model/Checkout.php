@@ -151,15 +151,30 @@ class Dibs_EasyCheckout_Model_Checkout extends Mage_Core_Model_Abstract
      * Set shipping address to quote stored in Easy
      */
     public function changeShippingAddress() {
-        $api = Mage::getModel('dibs_easycheckout/api');
-        $paymentId = $this->getQuote()->getDibsEasyPaymentId();
-        $payment = $api->findPayment($paymentId);
-        $quote = $this->getQuote();
-        $this->_prepareQuoteBillingAddress($quote, $payment);
-        $this->_prepareQuoteShippingAddress($quote, $payment);
-        $shippingAddress = $quote->getShippingAddress();
-        $shippingAddress->collectShippingRates();
-        $this->getQuote()->save();
+		try {
+			$api = Mage::getModel('dibs_easycheckout/api');
+			$paymentId = $this->getQuote()->getDibsEasyPaymentId();
+			$payment = $api->findPayment($paymentId);
+			$quote = $this->getQuote();
+			$this->_prepareQuoteBillingAddress($quote, $payment);
+			$this->_prepareQuoteShippingAddress($quote, $payment);
+			$shippingAddress = $quote->getShippingAddress();
+			$shippingAddress->collectShippingRates();
+			$this->getQuote()->save();
+			
+			/* To set shipping method and rate on address change event */
+			$quoteShippingMethod = $quote->getShippingAddress()->getShippingMethod();
+			if (empty($quoteShippingMethod)) {
+				$shippingmethods = $this->getShippinMethods();		
+				foreach ($shippingmethods as $shippingMethodCode => $shippingMethod) {
+					$this->_setShippingMethod($shippingMethodCode);
+					$api->updateCart($quote, $paymentId);
+					continue;
+				}
+			}
+		} catch(Exception $e) {
+			Mage::log($e->getMessage());
+		}
     }
 
     /**
@@ -351,7 +366,7 @@ class Dibs_EasyCheckout_Model_Checkout extends Mage_Core_Model_Abstract
         $shippingAddress->setCollectShippingRates(true);
         if ($shippingRegionCode) {
             $shippingRegionId =$this->getRegionId($shippingAddress->getCountryId(), $shippingRegionCode);
-            $shippingAddress->setRegionId($shippingRegionId);
+			$shippingAddress->setRegionId($shippingRegionId);
         }
         $shippingAddress->setShouldIgnoreValidation(true);
     }

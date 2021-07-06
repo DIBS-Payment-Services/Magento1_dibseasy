@@ -12,6 +12,9 @@
 
 ## CHANGELOG
 
+### Version 1.1.3 - Released 2021-07-06
+* Update - Fixed shipping calculation issue on address change event
+
 ### Version 1.1.2 - Released 2021-06-23
 * Update - Updated brand name in admin configuration
 
